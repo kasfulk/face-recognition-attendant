@@ -2,7 +2,7 @@
 name = "face-absen"
 version = "0.1.0"
 description = "Face Recognition Attendance System"
-authors = [{name = "Your Name", email = "your@email.com"}]
+authors = [{name = "Kasjful Kurniawan", email = "kasful.bpp@gmail.com"}]
 dependencies = [
     "fastapi>=0.100.0",
     "uvicorn[standard]>=0.20.0",
