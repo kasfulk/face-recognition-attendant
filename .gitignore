@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Agent
+.agent/
+
+# Environment variables
+.env
+
+# Docker
+.docker/
+
+# IDE
+.vscode/
+.idea/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Ruff
+.ruff_cache/
+
+# Local Dev
+venv/
+.venv/
+env/
+dist/
+build/
+*.egg-info/

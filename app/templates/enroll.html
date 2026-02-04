@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Face-Absen Enrollment</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+      }
+      input {
+        width: 100%;
+        padding: 8px;
+      }
+      button {
+        padding: 10px 20px;
+        background: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      #message {
+        margin-top: 20px;
+        padding: 10px;
+        border-radius: 4px;
+      }
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Enroll New Employee</h1>
+    <div class="form-group">
+      <label for="userId">Employee ID</label>
+      <input type="text" id="userId" placeholder="e.g. EMP001" required />
+    </div>
+    <div class="form-group">
+      <label for="photo">Face Photo</label>
+      <input type="file" id="photo" accept="image/*" required />
+    </div>
+    <button onclick="enroll()">Enroll</button>
+    <div id="message"></div>
+
+    <script>
+      async function enroll() {
+        const userId = document.getElementById("userId").value;
+        const fileInput = document.getElementById("photo");
+        const messageDiv = document.getElementById("message");
+
+        if (!userId || fileInput.files.length === 0) {
+          alert("Please fill all fields");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("user_id", userId);
+        formData.append("image", fileInput.files[0]);
+
+        messageDiv.className = "";
+        messageDiv.innerText = "Uploading...";
+
+        try {
+          const response = await fetch("/api/enroll", {
+            method: "POST",
+            body: formData,
+          });
+
+          const result = await response.json();
+
+          if (response.ok) {
+            messageDiv.className = "success";
+            messageDiv.innerText = `Success! Enrolled ${result.user_id}`;
+          } else {
+            messageDiv.className = "error";
+            messageDiv.innerText = `Error: ${result.detail}`;
+          }
+        } catch (error) {
+          messageDiv.className = "error";
+          messageDiv.innerText = `Error: ${error.message}`;
+        }
+      }
+    </script>
+  </body>
+</html>

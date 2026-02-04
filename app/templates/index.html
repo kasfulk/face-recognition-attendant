@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face-Absen Attendance</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding-top: 50px; background: #f0f2f5; }
+        h1 { margin-bottom: 20px; }
+        #container { position: relative; width: 640px; height: 480px; background: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        #overlay { Position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; }
+        .badge { background: rgba(0,0,0,0.7); color: white; padding: 10px 20px; border-radius: 20px; font-size: 24px; font-weight: bold; margin-bottom: 20px; text-align: center;}
+        .instruction { font-size: 32px; color: #ffeb3b; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        #status { margin-top: 20px; font-size: 18px; color: #333; }
+        button { margin-top: 20px; padding: 10px 30px; font-size: 18px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Face Attendance</h1>
+    
+    <div id="container">
+        <video id="video" autoplay playsinline></video>
+        <div id="overlay">
+            <div id="challengeText" class="instruction"></div>
+        </div>
+    </div>
+    <div id="status">Ready</div>
+    <button id="startBtn" onclick="startProcess()">Start Check-In</button>
+
+    <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const challengeText = document.getElementById('challengeText');
+        const statusDiv = document.getElementById('status');
+        const startBtn = document.getElementById('startBtn');
+        
+        let sessionId = null;
+        let isProcessing = false;
+        let stream = null;
+
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+                video.srcObject = stream;
+            } catch (err) {
+                statusDiv.innerText = "Error accessing camera: " + err.message;
+            }
+        }
+
+        async function startProcess() {
+            if (isProcessing) return;
+            isProcessing = true;
+            startBtn.disabled = true;
+            statusDiv.innerText = "Initiating Liveness Check...";
+            challengeText.innerText = "";
+
+            try {
+                // 1. Start Liveness Session
+                const resp = await fetch('/api/liveness/start', { method: 'POST' });
+                const data = await resp.json();
+                sessionId = data.session_id;
+                const challenge = data.challenge;
+
+                challengeText.innerText = `PLEASE: ${challenge.replace('_', ' ')}`;
+                statusDiv.innerText = "Verifying Liveness...";
+
+                // 2. Verify Loop
+                verifyLoop();
+
+            } catch (err) {
+                console.error(err);
+                resetState("Error starting session");
+            }
+        }
+
+        async function verifyLoop() {
+            if (!isProcessing) return;
+
+            // Capture frame using canvas
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(async (blob) => {
+                const formData = new FormData();
+                formData.append('session_id', sessionId);
+                formData.append('image', blob, 'frame.jpg');
+
+                try {
+                    const resp = await fetch('/api/liveness/verify', { method: 'POST', body: formData });
+                    const res = await resp.json();
+
+                    if (res.liveness) {
+                        // Liveness Passed! Now Absen
+                        doAbsen(blob);
+                    } else {
+                        // Retry (loop)
+                        requestAnimationFrame(verifyLoop);
+                    }
+                } catch (err) {
+                    console.log("Verify error", err);
+                    // Continue loop?
+                    requestAnimationFrame(verifyLoop);
+                }
+            }, 'image/jpeg', 0.8);
+        }
+
+        async function doAbsen(blob) {
+            statusDiv.innerText = "Liveness Verified! Identifying...";
+            challengeText.innerText = "VERIFIED";
+            challengeText.style.color = "#4caf50";
+
+            const formData = new FormData();
+            formData.append('session_id', sessionId);
+            formData.append('image', blob, 'face.jpg');
+
+            try {
+                const resp = await fetch('/api/absen', { method: 'POST', body: formData });
+                const res = await resp.json();
+
+                if (resp.ok) {
+                    statusDiv.innerText = `Welcome, ${res.user_id}! (Conf: ${(res.confidence * 100).toFixed(1)}%)`;
+                    setTimeout(() => resetState("Ready"), 3000);
+                } else {
+                    statusDiv.innerText = `Identity Not Found (${res.detail})`;
+                    setTimeout(() => resetState("Ready"), 3000);
+                }
+            } catch (err) {
+                statusDiv.innerText = `Attendance Failed: ${err.message}`;
+                setTimeout(() => resetState("Ready"), 3000);
+            }
+        }
+
+        function resetState(msg) {
+            isProcessing = false;
+            sessionId = null;
+            startBtn.disabled = false;
+            statusDiv.innerText = msg;
+            challengeText.innerText = "";
+        }
+
+        startCamera();
+    </script>
+</body>
+</html>
