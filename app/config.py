@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
     DATABASE_URL: str = ""
+    SECRET_KEY: str = "supersecretkey"
 
     class Config:
         env_file = ".env"

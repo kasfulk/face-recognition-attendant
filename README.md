@@ -57,7 +57,52 @@ Built with **FastAPI**, **InsightFace** (ArcFace), and **MediaPipe**, it offers 
 
     _Note: The first run triggers a download of the InsightFace models (~300MB). Ensure internet connectivity._
 
-4.  **Access the Application**
+4.  **Running Locally (Without Docker)**
+    If you prefer to run the application directly on your machine:
+
+    **Prerequisites:**
+    - Python 3.10+
+    - PostgreSQL 15+ with `pgvector` extension installed (e.g., `sudo apt-get install postgresql-15-pgvector`)
+
+    **Steps:**
+    1.  **Set up the Database**:
+        Create a user and database, and enable the `vector` extension.
+
+        ```bash
+        # Create user and database
+        sudo -u postgres psql -c "CREATE USER attendance WITH PASSWORD 'password';"
+        sudo -u postgres psql -c "CREATE DATABASE attendance_db OWNER attendance;"
+
+        # Enable extension (must be superuser)
+        sudo -u postgres psql -d attendance_db -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+        # Initialize schema
+        export PGPASSWORD=password
+        psql -h localhost -U attendance -d attendance_db -f docker/init.sql
+        ```
+
+    2.  **Configure Environment**:
+        Create a `.env` file with your local credentials:
+
+        ```bash
+        cp .env.example .env
+        # Edit .env to set: DATABASE_URL=postgresql+asyncpg://attendance:password@localhost:5432/attendance_db
+        ```
+
+    3.  **Install Dependencies**:
+
+        ```bash
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt
+        ```
+
+    4.  **Run the Server**:
+        ```bash
+        uvicorn app.main:app --reload
+        ```
+
+5.  **Access the Application**
     - **Frontend Kiosk**: [http://localhost:8000/static/index.html](http://localhost:8000/static/index.html)
     - **Enrollment Page**: [http://localhost:8000/static/enroll.html](http://localhost:8000/static/enroll.html)
     - **API Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
